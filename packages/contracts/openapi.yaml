@@ -1,0 +1,728 @@
+﻿openapi: 3.0.3
+info:
+  title: Hall Booking API
+  version: 0.1.0
+  description: Shared OpenAPI contract for Hall Booking system.
+servers:
+  - url: http://localhost:4000/v1
+  - url: https://api.{domain}/v1
+    variables:
+      domain:
+        default: example.com
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      tags: [Health]
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /auth/login:
+    post:
+      summary: Login
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/register:
+    post:
+      summary: Register
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registration success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /users/me:
+    get:
+      summary: Current user profile
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginUser'
+        '401':
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /halls:
+    get:
+      summary: List halls
+      tags: [Halls]
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: city
+          schema:
+            type: string
+        - in: query
+          name: minCapacity
+          schema:
+            type: integer
+        - in: query
+          name: maxCapacity
+          schema:
+            type: integer
+        - in: query
+          name: minPrice
+          schema:
+            type: integer
+        - in: query
+          name: maxPrice
+          schema:
+            type: integer
+        - in: query
+          name: serviceIds
+          schema:
+            type: string
+            description: Comma-separated service IDs
+      responses:
+        '200':
+          description: List of halls
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HallListItem'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+  /halls/{id}:
+    get:
+      summary: Get hall details
+      tags: [Halls]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Hall details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HallDetail'
+        '404':
+          description: Hall not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HallDetail'
+        '404':
+          description: Hall not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /owner/halls:
+    get:
+      summary: List my halls
+      tags: [Owner]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of my halls
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HallListItem'
+    post:
+      summary: Create a hall
+      tags: [Owner]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHallRequest'
+      responses:
+        '201':
+          description: Hall created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HallDetail'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Owner already has an active hall
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /owner/halls/{id}:
+    patch:
+      summary: Update a hall
+      tags: [Owner]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateHallRequest'
+      responses:
+        '200':
+          description: Hall updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HallDetail'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Hall not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Soft delete a hall
+      tags: [Owner]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Hall deleted
+        '409':
+          description: Hall has upcoming bookings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Hall not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /uploads:
+    post:
+      summary: Upload a file (image)
+      tags: [Uploads]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: /uploads/halls/1707123456-abc123.jpg
+        '400':
+          description: Invalid file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /services:
+    get:
+      summary: List services
+      tags: [Services]
+      responses:
+        '200':
+          description: List of available services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Service'
+  /owner/halls/{id}/availability:
+    post:
+      summary: Block availability for a hall
+      tags: [Owner]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAvailabilityBlockRequest'
+      responses:
+        '201':
+          description: Block created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityBlock'
+        '403':
+          description: Not authorized
+        '404':
+          description: Hall not found
+  /owner/availability/{id}:
+    delete:
+      summary: Remove an availability block
+      tags: [Owner]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Block deleted
+        '403':
+          description: Not authorized
+        '404':
+          description: Block not found
+  /halls/{id}/availability:
+    get:
+      summary: Get busy periods for a hall
+      tags: [Halls]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of busy periods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    startAt:
+                      type: string
+                      format: date-time
+                    endAt:
+                      type: string
+                      format: date-time
+                    type:
+                      type: string
+                      enum: [BLOCKED, BOOKED]
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: SOME_CODE
+            message:
+              type: string
+              example: Human readable message
+            details:
+              type: object
+              additionalProperties: true
+    HealthResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+    LoginRequest:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier:
+          type: string
+          example: ali@example.com
+        password:
+          type: string
+          example: StrongPassword123
+    RegisterRequest:
+      type: object
+      required: [password]
+      properties:
+        fullName:
+          type: string
+          example: Ali Ahmed
+        email:
+          type: string
+          format: email
+          example: ali@example.com
+        phone:
+          type: string
+          example: "+967700123456"
+        password:
+          type: string
+          example: StrongPassword123
+        role:
+          type: string
+          enum: [CUSTOMER, OWNER]
+          example: CUSTOMER
+      anyOf:
+        - required: [email]
+        - required: [phone]
+    LoginUser:
+      type: object
+      properties:
+        id:
+          type: string
+          example: u1
+        role:
+          type: string
+          enum: [CUSTOMER, OWNER, ADMIN]
+          example: OWNER
+        fullName:
+          type: string
+          example: Ali Ahmed
+    LoginResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/LoginUser'
+        token:
+          type: string
+          example: <jwt>
+    RegisterResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/LoginUser'
+        token:
+          type: string
+          example: <jwt>
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    HallPhoto:
+      type: object
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+        isCover:
+          type: boolean
+    HallListItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        city:
+          type: string
+        area:
+          type: string
+        capacity:
+          type: integer
+        basePrice:
+          type: number
+        currency:
+          type: string
+        coverPhoto:
+          type: string
+          nullable: true
+    HallDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        city:
+          type: string
+        area:
+          type: string
+        address:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        capacity:
+          type: integer
+        basePrice:
+          type: number
+        currency:
+          type: string
+        pricingType:
+          type: string
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/HallPhoto'
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        owner:
+          type: object
+          properties:
+            id:
+              type: string
+            fullName:
+              type: string
+    CreateHallRequest:
+      type: object
+      required: [name, city, capacity, basePrice]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        city:
+          type: string
+        area:
+          type: string
+        address:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        capacity:
+          type: integer
+        basePrice:
+          type: number
+        currency:
+          type: string
+        pricingType:
+          type: string
+        serviceIds:
+          type: array
+          items:
+            type: string
+        photos:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              isCover:
+                type: boolean
+    UpdateHallRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        city:
+          type: string
+        area:
+          type: string
+        address:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        capacity:
+          type: integer
+        basePrice:
+          type: number
+        currency:
+          type: string
+        pricingType:
+          type: string
+        status:
+          type: string
+        serviceIds:
+          type: array
+          items:
+            type: string
+        photos:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              isCover:
+                type: boolean
+    AvailabilityBlock:
+      type: object
+      properties:
+        id:
+          type: string
+        hallId:
+          type: string
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum: [BLOCKED, MAINTENANCE, BOOKED]
+        note:
+          type: string
+          nullable: true
+    CreateAvailabilityBlockRequest:
+      type: object
+      required: [startAt, endAt, type]
+      properties:
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum: [BLOCKED, MAINTENANCE]
+        note:
+          type: string
+

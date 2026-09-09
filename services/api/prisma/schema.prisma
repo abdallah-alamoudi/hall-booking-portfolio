@@ -1,0 +1,201 @@
+// Prisma schema baseline for the Hall Booking API.
+// Models will be added per feature to match specs/SCHEMA.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  OWNER
+  ADMIN
+}
+
+enum Daytime {
+  MORNING
+  EVENING
+  FULL_DAY
+}
+
+enum BookingStatus {
+  PENDING_REVIEW
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum ReceiptStatus {
+  UPLOADED
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  role         Role     @default(CUSTOMER)
+  fullName     String
+  phone        String?  @unique
+  email        String?  @unique
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  halls    Hall[]
+  bookings Booking[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model Hall {
+  id            String   @id @default(cuid())
+  ownerId       String
+  ownerActiveKey String? @unique
+  owner         User     @relation(fields: [ownerId], references: [id])
+  name          String
+  description   String?  @db.Text
+  city          String
+  area          String?
+  address       String?
+  latitude      Decimal?
+  longitude     Decimal?
+  capacity      Int
+  depositAmount Decimal
+  currency      String   @default("YER")
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  photos        HallPhoto[]
+  services      HallServiceMap[]
+  availability  AvailabilityBlock[]
+  bookings      Booking[]
+  daytimePrices DaytimePrice[]
+  bankAccounts  HallBankAccount[]
+
+  @@index([ownerId])
+  @@index([city])
+  @@index([status])
+  @@map("halls")
+}
+
+model DaytimePrice {
+  id      String  @id @default(cuid())
+  hallId  String
+  hall    Hall    @relation(fields: [hallId], references: [id])
+  daytime Daytime
+  price   Decimal
+
+  @@unique([hallId, daytime])
+  @@index([hallId])
+  @@map("daytime_prices")
+}
+
+model HallPhoto {
+  id        String   @id @default(cuid())
+  hallId    String
+  hall      Hall     @relation(fields: [hallId], references: [id])
+  url       String
+  isCover   Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([hallId])
+  @@map("hall_photos")
+}
+
+model AvailabilityBlock {
+  id        String   @id @default(cuid())
+  hallId    String
+  hall      Hall     @relation(fields: [hallId], references: [id])
+  startAt   DateTime
+  endAt     DateTime
+  type      String   // BLOCKED / MAINTENANCE
+  daytime   Daytime? // null = block all slots for that day
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([hallId])
+  @@map("availability_blocks")
+}
+
+model HallService {
+  id    String           @id @default(cuid())
+  name  String           @unique
+  halls HallServiceMap[]
+
+  @@map("hall_services")
+}
+
+model HallServiceMap {
+  hallId    String
+  serviceId String
+  hall      Hall        @relation(fields: [hallId], references: [id])
+  service   HallService @relation(fields: [serviceId], references: [id])
+
+  @@id([hallId, serviceId])
+  @@map("hall_service_map")
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  hallId          String
+  hall            Hall          @relation(fields: [hallId], references: [id])
+  customerId      String
+  customer        User          @relation(fields: [customerId], references: [id])
+  status          BookingStatus @default(PENDING_REVIEW)
+  purpose         String
+  date            DateTime      @db.Date
+  daytime         Daytime
+  totalPrice      Decimal
+  currency        String        @default("YER")
+  bankAccountId   String?
+  customerNote    String?       @db.Text
+  ownerDecisionAt DateTime?
+  ownerDecisionBy String?
+  rejectReason    String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  receipt         Receipt?
+
+  @@unique([hallId, date, daytime])
+  @@index([hallId])
+  @@index([customerId])
+  @@index([status])
+  @@map("bookings")
+}
+
+model HallBankAccount {
+  id            String   @id @default(cuid())
+  hallId        String
+  hall          Hall     @relation(fields: [hallId], references: [id])
+  bankCode      String
+  accountHolder String
+  accountNumber String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([hallId])
+  @@map("hall_bank_accounts")
+}
+
+model Receipt {
+  id        String        @id @default(cuid())
+  bookingId String        @unique
+  booking   Booking       @relation(fields: [bookingId], references: [id])
+  imageUrl  String
+  status    ReceiptStatus @default(UPLOADED)
+  note      String?       @db.Text
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("receipts")
+}
